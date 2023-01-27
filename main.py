@@ -1,4 +1,6 @@
 import base64
+import io
+import imghdr
 from PIL import Image
 import random
 import json
@@ -23,7 +25,7 @@ def encrypt_encoded_image(base64_bytes):
     encrypted = ""
     decryption_key = ""
     
-    string_bytes = str(base64_bytes)
+    string_bytes = base64_bytes.decode('utf-8')
     for i in range(len(string_bytes)):
         char = str(string_bytes)[i]
         if char.isalpha():
@@ -46,21 +48,50 @@ def encrypt_encoded_image(base64_bytes):
     
 def decrpyt_encrpyted_image(encrpyted_image, decryption_key):
     """Decrypt the encrypted image with a decryption key"""
-    pass
+    decrypted = ""
+    splitted_decryption_key = decryption_key.split('-')
+    for i in range(len(splitted_decryption_key)):
+        char = encrpyted_image[i]
+        if (len(splitted_decryption_key[i].split('.')) == 3):
+            no_1, no_2, no_3 = splitted_decryption_key[i].split('.')
+            no_1 = int(no_1)
+            no_2 = int(no_2)
+            no_3 = int(no_3)
+            
+            shifted_char = chr((ord(char) - no_3 - no_1) % no_2 + no_1)
+            decrypted += shifted_char
+        else:
+            decrypted += splitted_decryption_key[i]
+    
+    return bytes(decrypted, 'utf-8')
 
 def save_image(base64_bytes, image_name):
     """Save the image to the file"""
-    image_bytes = decode_image_bytes(base64_bytes)
-    image = Image.frombytes("RGB", (256, 256), image_bytes, "raw", "RGB", 0, 1)
-    image.save(image_name)
+    # Decode the base64 string
+    image_bytes = base64.b64decode(base64_bytes + b'==')
+    # Create a BytesIO object from the image bytes
+    image_data = io.BytesIO(image_bytes)
+    # detect the image file format
+    file_format = imghdr.what(image_data)
+    # Open the image file
+    image = Image.open(image_data)
+    # Save the image to file
+    image.save(image_name, format = file_format)
     
 def main():
     image_bytes = get_image_bytes(IMAGE_PATH)
     encoded = encode_image_bytes(image_bytes)
     results = encrypt_encoded_image(encoded)
     
+    # save credentials to file
     with open("results.json", 'w') as file:
         json_dumps_str = json.dumps(results, indent=4)
         file.write(json_dumps_str)
+    
+    decrypted = decrpyt_encrpyted_image(results['encrypted'], results['decryption_key']) 
+    
+    print(encoded[:30])
+    print(decrypted[:30])
+    save_image(decrypted, "out.png")
 
 main()
