@@ -3,6 +3,23 @@ from algorithms import *
 from file_operations import *
 import base64
 import cryptography.fernet as fernet
+import openai
+openai.api_key = "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"
+
+def analyze_text(text):
+    """Uses OpenAI's API to analyze text for potential security vulnerabilities"""
+    prompt = f"Analyze the following text for security vulnerabilities: {text}"
+    response = openai.Completion.create(
+        engine="davinci",
+        prompt=prompt,
+        max_tokens=1024,
+        n=1,
+        stop=None,
+        temperature=0.5,
+    )
+
+    return response.choices[0].text.strip()
+
 
 def encrpyt_image(image_path):
     """Encrypt an image"""
@@ -12,6 +29,9 @@ def encrpyt_image(image_path):
         encoded = encode_image_bytes(image_bytes)
         results = encrypt_encoded_image(encoded)
         save_credentials_to_files(results)
+
+        analysis = analyze_text(str(results))
+        print("Security analysis results: ", analysis)
         
         print("The image has been encrypted and saved to the files encryption.txt and decryption_key.txt")
     except Exception as e:
@@ -22,6 +42,11 @@ def decrppt_image():
         encrypted, decryption_key = read_credentials_from_files()
         decrypted = decrpyt_encrpyted_image(encrypted, decryption_key)
         save_image(decrypted, 'out.png')
+
+        # Analyze the decrypted data for potential vulnerabilities
+        analysis = analyze_text(str(decrypted))
+        print("Security analysis results: ", analysis)
+
         print("The image has been decrypted and saved to the file out.png")
     except Exception as e:
         print("An error occured while decrypting the image: " + str(e))
